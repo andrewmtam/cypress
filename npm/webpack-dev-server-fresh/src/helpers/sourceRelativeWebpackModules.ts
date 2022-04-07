@@ -1,6 +1,9 @@
 import Module from 'module'
 import path from 'path'
 import type { WebpackDevServerConfig } from '../devServer'
+import debugLib from 'debug'
+
+const debug = debugLib('cypress:webpack-dev-server-fresh:sourceRelativeWebpackModules')
 
 type ModuleClass = typeof Module & {
   _load(id: string, parent: Module, isMain: boolean): any
@@ -49,6 +52,10 @@ export interface SourceRelativeWebpackResult {
   }
 }
 
+const frameworkToSourceMap = {
+  'create-react-app': 'react-scripts',
+} as Record<string, string>
+
 const originalModuleLoad = (Module as ModuleClass)._load
 const originalModuleResolveFilename = (Module as ModuleClass)._resolveFilename
 
@@ -68,9 +75,12 @@ export function sourceRelativeWebpackModules (config: WebpackDevServerConfig) {
 
   // First, we source the framework, ensuring it's sourced from the user's project and not the
   // Cypress binary. This is the path we use to relative-resolve the
-  if (config.framework) {
+  const framework = frameworkToSourceMap[(config.framework as string)] ?? config.framework
+
+  debug('Source framework %s', framework)
+  if (framework) {
     try {
-      const frameworkJsonPath = require.resolve(`${config.framework}/package.json`, {
+      const frameworkJsonPath = require.resolve(`${framework}/package.json`, {
         paths: [searchRoot],
       })
       const frameworkPathRoot = path.dirname(frameworkJsonPath)
@@ -87,12 +97,17 @@ export function sourceRelativeWebpackModules (config: WebpackDevServerConfig) {
       }
     } catch (e) {
       // TODO
+      debug('Framework source error %o', e)
     }
   }
+
+  debug('Framework source result %o', { framework, importPath: result.framework?.importPath, version: result.framework?.packageJson?.version })
 
   // Webpack:
 
   let webpackJsonPath: string
+
+  debug('Source Webpack with search root %s', searchRoot)
 
   try {
     webpackJsonPath = require.resolve('webpack/package.json', {
@@ -115,13 +130,17 @@ export function sourceRelativeWebpackModules (config: WebpackDevServerConfig) {
   result.webpack.importPath = path.dirname(webpackJsonPath)
   result.webpack.packageJson = require(webpackJsonPath)
   result.webpack.module = require(result.webpack.importPath)
-  result.webpack.majorVersion = getMajorVersion(result.webpack.packageJson, [4, 5]);
+  result.webpack.majorVersion = getMajorVersion(result.webpack.packageJson, [4, 5])
+
+  debug('Webpack source result %o', { importPath: result.webpack.importPath, version: result.webpack.majorVersion });
 
   (Module as ModuleClass)._load = function (request, parent, isMain) {
     if (request === 'webpack' || request.startsWith('webpack/')) {
       const resolvePath = require.resolve(request, {
         paths: [searchRoot],
       })
+
+      debug('Module.load webpack %o', resolvePath)
 
       return originalModuleLoad(resolvePath, parent, isMain)
     }
@@ -142,6 +161,8 @@ export function sourceRelativeWebpackModules (config: WebpackDevServerConfig) {
   // Webpack dev server:
 
   let webpackDevServerJsonPath: string
+
+  debug('Source WebpackDevServer with search root %s', searchRoot)
 
   try {
     webpackDevServerJsonPath = require.resolve('webpack-dev-server/package.json', {
@@ -164,9 +185,13 @@ export function sourceRelativeWebpackModules (config: WebpackDevServerConfig) {
   result.webpackDevServer.module = require(result.webpackDevServer.importPath)
   result.webpackDevServer.majorVersion = getMajorVersion(result.webpackDevServer.packageJson, [3, 4])
 
+  debug('Webpack dev server source result %o', { importPath: result.webpackDevServer.importPath, version: result.webpackDevServer.majorVersion })
+
   // Webpack HTML Plugin:
 
   let htmlWebpackPluginJsonPath: string
+
+  debug('Source HtmlWebpackPlugin with search root %s', searchRoot)
 
   try {
     htmlWebpackPluginJsonPath = require.resolve('html-webpack-plugin/package.json', {
@@ -190,6 +215,8 @@ export function sourceRelativeWebpackModules (config: WebpackDevServerConfig) {
   result.htmlWebpackPlugin.packageJson = require(htmlWebpackPluginJsonPath)
   result.htmlWebpackPlugin.module = require(result.htmlWebpackPlugin.importPath)
   result.htmlWebpackPlugin.majorVersion = getMajorVersion(result.htmlWebpackPlugin.packageJson, [4, 5])
+
+  debug('HtmlWebpackPlugin source result %o', { importPath: result.htmlWebpackPlugin.importPath, version: result.htmlWebpackPlugin.majorVersion })
 
   return result
 }

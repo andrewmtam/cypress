@@ -8,6 +8,7 @@ import { sourceRelativeWebpackModules } from './helpers/sourceRelativeWebpackMod
 import type { AddressInfo } from 'net'
 import debugLib from 'debug'
 import type { Server } from 'http'
+import { createReactAppHandler } from './helpers/createReactAppHandler'
 
 const debug = debugLib('cypress:webpack-dev-server-fresh:devServer')
 
@@ -20,7 +21,7 @@ export type WebpackDevServerConfig = {
   webpackConfig?: unknown // Derived from the user's webpack
 }
 
-const ALL_FRAMEWORKS = ['create-react-app', 'nuxt', 'react'] as const
+const ALL_FRAMEWORKS = ['create-react-app', 'nuxt', 'react', 'next', 'vue-cli', 'vue'] as const
 
 /**
  * @internal
@@ -123,7 +124,7 @@ devServer.create = function (devServerConfig: WebpackDevServerConfig) {
   if (typeof devServerConfig.framework === 'string') {
     switch (devServerConfig.framework) {
       case 'create-react-app':
-        // frameworkConfig = createReactApp()
+        frameworkConfig = createReactAppHandler({ devServerConfig, sourceWebpackModulesResult })
         break
       case 'react':
         break

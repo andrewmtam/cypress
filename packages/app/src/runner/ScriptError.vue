@@ -1,6 +1,6 @@
 <template>
   <pre
-    class="text-red-500 bg-white p-24px overflow-auto h-[calc(100%-70px)] whitespace-pre-wrap break-all text-sm"
+    class="bg-white h-[calc(100%-70px)] text-sm p-24px text-red-500 overflow-auto whitespace-pre-wrap break-all"
     v-html="scriptError"
   />
 </template>
@@ -19,6 +19,10 @@ const convert = new ansiToHtml({
 
 const props = defineProps<{ error: string }>()
 
-const scriptError = computed(() => convert.toHtml(props.error))
+const scriptError = computed(() => {
+  console.log(props.error)
+
+  return convert.toHtml(props.error)
+})
 
 </script>

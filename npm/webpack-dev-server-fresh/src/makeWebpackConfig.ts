@@ -52,6 +52,8 @@ export function makeWebpackConfig (
   const userWebpackConfig = config.devServerConfig.webpackConfig as Partial<Configuration>
   const frameworkWebpackConfig = config.frameworkConfig as Partial<Configuration>
 
+  const finalUserWebpackConfig = merge(frameworkWebpackConfig ?? {}, userWebpackConfig ?? {})
+
   const {
     cypressConfig: {
       projectRoot,
@@ -62,7 +64,7 @@ export function makeWebpackConfig (
     devServerEvents,
   } = config.devServerConfig
 
-  debug(`User passed in webpack config with values %o`, userWebpackConfig)
+  debug(`User passed in webpack config with values %o`, finalUserWebpackConfig)
   debug(`New webpack entries %o`, files)
   debug(`Project root`, projectRoot)
   debug(`Support file`, supportFile)
@@ -89,8 +91,8 @@ export function makeWebpackConfig (
     ],
   }
 
-  if (userWebpackConfig?.plugins) {
-    userWebpackConfig.plugins = userWebpackConfig.plugins.filter((plugin) => {
+  if (finalUserWebpackConfig?.plugins) {
+    finalUserWebpackConfig.plugins = finalUserWebpackConfig.plugins.filter((plugin) => {
       if (removeList.includes(plugin.constructor.name)) {
         /* eslint-disable no-console */
         console.warn(`[@cypress/webpack-dev-server]: removing ${plugin.constructor.name} from configuration.`)
@@ -102,17 +104,16 @@ export function makeWebpackConfig (
     })
   }
 
-  if (typeof userWebpackConfig?.module?.unsafeCache === 'function') {
-    const originalCachePredicate = userWebpackConfig.module.unsafeCache
+  if (typeof finalUserWebpackConfig?.module?.unsafeCache === 'function') {
+    const originalCachePredicate = finalUserWebpackConfig.module.unsafeCache
 
-    userWebpackConfig.module.unsafeCache = (module: any) => {
+    finalUserWebpackConfig.module.unsafeCache = (module: any) => {
       return originalCachePredicate(module) && !/[\\/]webpack-dev-server[\\/]dist[\\/]browser\.js/.test(module.resource)
     }
   }
 
   const mergedConfig = merge(
-    userWebpackConfig ?? {},
-    frameworkWebpackConfig ?? {},
+    finalUserWebpackConfig,
     makeDefaultWebpackConfig(config),
     dynamicWebpackConfig,
   )

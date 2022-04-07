@@ -20,6 +20,8 @@ export const e2eProjectDirs = [
   'config-with-ts',
   'config-with-ts-syntax-error',
   'cookies',
+  'cra-4',
+  'cra-5',
   'create-react-app-configured',
   'create-react-app-custom-index-html',
   'create-react-app-unconfigured',
